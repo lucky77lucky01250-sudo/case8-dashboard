@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/*
+ * ブランドカラー: 白 + ネイビー #1A2E5C（提案書の確定仕様）
+ * Tailwind v4 には tailwind.config.ts がないため、講義6章の設定はここに読み替えている
+ */
+@theme {
+  --color-brand-navy: #1a2e5c;
+  --color-brand-navy-2: #3b5998;
+  --color-brand-navy-3: #7b92c5;
+  --color-brand-navy-4: #b5c2e0;
+  --color-brand-navy-5: #d8deec;
+  --color-brand-light: #f8fafc;
+}
+
+/*
+ * 読み手7名が見る業務画面。OSのダークモード設定で配色が反転すると
+ * ブランドガイドラインから外れるため、ライト固定にしている
+ */
+html {
+  color-scheme: light;
+}
+
+body {
+  background: #ffffff;
+  color: #171717;
+}
