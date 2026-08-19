@@ -1,0 +1,52 @@
+name: CI / Deploy
+
+# GitHub Actions は CI/CD（push / PR）専用。
+# スケジュール実行は使わない（リポジトリが60日無活動だと自動停止し、
+# 保守契約が切れた後に静かに壊れるため。Supabase の停止対策は Vercel Cron が担当）
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: 型チェック・Lint・テスト
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm type-check
+      - run: pnpm lint
+      - run: pnpm test
+
+  deploy:
+    name: 本番デプロイ
+    # テストが落ちたらここまで来ない。壊れたコードが本番に流れない
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Vercel へデプロイ
+        # 注意: Vercel 側の Git 連携は必ず切っておくこと。
+        # 有効なままだと同じコミットが二重にデプロイされ、
+        # テストを通っていない方が本番に出る（docs/decisions.md D-4）
+        run: |
+          pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+          pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
+          pnpm dlx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

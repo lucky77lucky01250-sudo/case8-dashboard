@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AiAnalysis } from "@/components/dashboard/ai-analysis";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
@@ -175,6 +176,10 @@ export default function DashboardPage() {
 
           <section className="mt-6">
             <MonthlyTrendChart months={summary.months} />
+          </section>
+
+          <section className="mt-6">
+            <AiAnalysis summary={summary} />
           </section>
 
           <section className="mt-6 grid gap-6 lg:grid-cols-2">
