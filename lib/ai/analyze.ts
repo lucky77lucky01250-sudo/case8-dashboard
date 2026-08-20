@@ -3,6 +3,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { SalesSummary } from "../aggregate";
 import { ANALYSIS_SYSTEM_PROMPT, buildAnalysisInput, buildUserMessage } from "./prompt";
+import { estimateCost, formatCostLog } from "./cost";
 import { buildMockAnalysis } from "./mock";
 import { AnalysisSchema, analysisJsonSchema, type Analysis } from "./schema";
 
@@ -58,6 +59,15 @@ export async function analyzeSales(summary: SalesSummary): Promise<AnalysisResul
       },
       messages: [{ role: "user", content: buildUserMessage(input) }],
     });
+
+    // 提案書の「月500円」を実測で裏づけるため、呼び出しごとに使用量を記録する
+    const cost = estimateCost({
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      cacheCreationInputTokens: response.usage.cache_creation_input_tokens ?? 0,
+      cacheReadInputTokens: response.usage.cache_read_input_tokens ?? 0,
+    });
+    console.log(formatCostLog(response.model, cost));
 
     // Claude Opus 5 は安全性の判断で応答を断ることがある。
     // content を読む前に stop_reason を確認しないと、ここで例外になる
