@@ -14,9 +14,9 @@ export function SkuTable({ skuRanking }: Props) {
             <tr>
               <th className="w-12 py-2 pr-3 font-medium">順位</th>
               <th className="py-2 pr-3 font-medium">商品名</th>
-              <th className="py-2 pr-3 font-medium">SKU</th>
+              <th className="hidden py-2 pr-3 font-medium sm:table-cell">SKU</th>
               <th className="py-2 pr-3 text-right font-medium">売上</th>
-              <th className="py-2 text-right font-medium">数量</th>
+              <th className="hidden py-2 text-right font-medium sm:table-cell">数量</th>
             </tr>
           </thead>
           <tbody>
@@ -24,11 +24,15 @@ export function SkuTable({ skuRanking }: Props) {
               <tr key={entry.sku} className="border-b border-zinc-100 last:border-0">
                 <td className="py-2 pr-3 tabular-nums text-zinc-500">{index + 1}</td>
                 <td className="py-2 pr-3 text-zinc-900">{entry.productName}</td>
-                <td className="py-2 pr-3 font-mono text-xs text-zinc-500">{entry.sku}</td>
-                <td className="py-2 pr-3 text-right tabular-nums font-medium text-brand-navy">
+                <td className="hidden py-2 pr-3 font-mono text-xs text-zinc-500 sm:table-cell">
+                  {entry.sku}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums font-medium whitespace-nowrap text-brand-navy">
                   {formatYen(entry.revenue)}
                 </td>
-                <td className="py-2 text-right tabular-nums text-zinc-700">{entry.quantity}</td>
+                <td className="hidden py-2 text-right tabular-nums text-zinc-700 sm:table-cell">
+                  {entry.quantity}
+                </td>
               </tr>
             ))}
           </tbody>

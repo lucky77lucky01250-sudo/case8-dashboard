@@ -18,7 +18,17 @@ export function CategoryChart({ categories, totalRevenue }: Props) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" vertical={false} />
-            <XAxis dataKey="category" stroke="#71717A" fontSize={12} />
+            {/*
+              interval={0} を外すと幅が足りないときに Recharts がラベルを間引く。
+              スマホで最も高い棒のラベルが消え、別のカテゴリが1位に見えてしまうため必須
+            */}
+            <XAxis
+              dataKey="category"
+              stroke="#71717A"
+              fontSize={10}
+              interval={0}
+              tickMargin={6}
+            />
             <YAxis
               stroke="#71717A"
               fontSize={12}
