@@ -108,3 +108,58 @@ describe("必須列の欠落", () => {
     expect(result.valid).toEqual([]);
   });
 });
+
+// 提案書 第2項の約束「ドラッグ&ドロップ。列の並びが違っても自動判定」
+describe("列の並び順と表記揺れ", () => {
+  it("列の順序が入れ替わっていても正しく取り込む", () => {
+    const shuffled = [
+      "cost,revenue,quantity,sku,category,product_name,customer_id,order_date",
+      "2800,7600,2,LUM-TOP-01,トップス,オーガニックコットンTシャツ,C001,2025-09-03",
+    ].join("\n");
+
+    const result = parseSalesCsvText(shuffled);
+
+    expect(result.invalid).toEqual([]);
+    expect(result.valid[0]).toEqual({
+      orderDate: "2025-09-03",
+      month: "2025-09",
+      customerId: "C001",
+      productName: "オーガニックコットンTシャツ",
+      category: "トップス",
+      sku: "LUM-TOP-01",
+      quantity: 2,
+      revenue: 7600,
+      cost: 2800,
+    });
+  });
+
+  it("Shopifyやexcel由来の列名の揺れを吸収する", () => {
+    const varied = [
+      "Order Date,Customer ID,Product Name,Category,SKU,QTY,Sales,原価",
+      "2025/9/3,C001,オーガニックコットンTシャツ,トップス,LUM-TOP-01,2,\"7,600\",2800",
+    ].join("\n");
+
+    const result = parseSalesCsvText(varied);
+
+    expect(result.missingColumns).toEqual([]);
+    expect(result.invalid).toEqual([]);
+    expect(result.valid[0]).toMatchObject({
+      orderDate: "2025-09-03",
+      customerId: "C001",
+      quantity: 2,
+      revenue: 7600,
+    });
+  });
+
+  it("Excelが付けるBOMで1行目が壊れない", () => {
+    const withBom =
+      "﻿order_date,customer_id,product_name,category,sku,quantity,revenue,cost\n" +
+      "2025-09-03,C001,Tシャツ,トップス,LUM-TOP-01,2,7600,2800\n";
+
+    const result = parseSalesCsvText(withBom);
+
+    expect(result.missingColumns).toEqual([]);
+    expect(result.valid).toHaveLength(1);
+    expect(result.valid[0].orderDate).toBe("2025-09-03");
+  });
+});

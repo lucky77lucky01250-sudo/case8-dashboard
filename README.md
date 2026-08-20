@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LUMINA 売上分析ダッシュボード
 
-## Getting Started
+アパレルEC「LUMINA」向けの月次売上分析ダッシュボード。
+売上CSVをアップロードすると、KPI・グラフ・AI分析コメントを表示します。
 
-First, run the development server:
+読み手は7名（社長・マーケティング部長・営業5名）。期間軸は月次のみです。
+
+## 動かす
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 を開き、売上CSVをドラッグ&ドロップします。
+動作確認用のサンプルは `sample-data/case8-sales-sample.csv`（40件・2025年9〜11月）。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+APIキーやSupabaseが未設定でも起動します。AI分析は集計値から作った仮コメントを表示し、
+画面上に仮である旨が出ます。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 環境変数
 
-## Learn More
+`.env.example` を `.env.local` にコピーして値を入れます。取得手順は
+`docs/setup-checklist.md` を参照。
 
-To learn more about Next.js, take a look at the following resources:
+| 変数 | 用途 | 未設定時 |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | AI分析コメントの生成 | 仮コメントを表示 |
+| `NEXT_PUBLIC_SUPABASE_URL` | データの保存先 | 保存せずメモリ上で動作 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 画面からの読み取り | 同上 |
+| `SUPABASE_SERVICE_ROLE_KEY` | サーバーからの書き込み | 同上 |
+| `CRON_SECRET` | Vercel Cron の認証（任意） | 認証なしで実行 |
+| `HEALTH_FORCE_FAIL` | `1` で `/api/health` が500を返す | 通常動作 |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## コマンド
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm test         # テスト（CSVパース・集計・AI入力・ヘルスチェック）
+pnpm type-check   # 型チェック
+pnpm lint         # Lint
+pnpm build        # 本番ビルド
+```
 
-## Deploy on Vercel
+CIは push と PR で `type-check` → `lint` → `test` を実行し、
+すべて通過したときだけ本番へデプロイします。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 構成
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/
+  page.tsx                  ダッシュボード画面
+  actions/analyze.ts        AI分析のサーバーアクション
+  api/health/               UptimeRobot の監視先
+  api/cron/keep-alive/      Supabase の自動停止対策（Vercel Cron から日次）
+components/
+  upload/                   CSVアップロードと取り込み結果
+  dashboard/                KPIカード・グラフ・SKU表・AI分析
+lib/
+  csv/parser.ts             CSVパースとバリデーション
+  aggregate.ts              KPI集計（月次・前月比・リピート率・カテゴリ・SKU）
+  ai/                       プロンプト・スキーマ・API呼び出し
+supabase/schema.sql         テーブル定義（Supabase の SQL Editor で実行）
+tests/                      正解値との照合を含むテスト
+docs/
+  proposal-final.md         提案書（MVPスコープと検収基準の正本）
+  decisions.md              実装判断の記録
+  setup-checklist.md        アカウント準備手順
+```
+
+## 数字の扱いで気をつけていること
+
+このシステムは**数字が合っていることが最優先**です。以下は意図的な設計なので、
+変更する場合は `docs/decisions.md` を読んでから行ってください。
+
+- **月次集計は日付を文字列のまま扱う。** `new Date()` に変換すると、文字列の形式によって
+  UTC解釈とローカル解釈が切り替わり、月境界がタイムゾーン依存になります
+- **金額は整数（円）で持つ。** 小数で持つと丸め誤差で既存Excelと一致しなくなります
+- **無効行は捨てずに数える。** 「◯行成功 / ×行スキップ」を必ず表示し、
+  スキップ行はCSVで持ち帰れるようにしています
+- **リピート率は月次と期間累計の2種類がある。** 定義が異なるため、画面上でも区別しています
+- **AIへ送るのは集計後の数値のみ。** 顧客IDや注文明細は送信しません（テストで固定）
