@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Supabase への実接続なしで「クエリ失敗 → 500」まで検証できるようにモックする
-const selectMock = vi.fn();
+const limitMock = vi.fn();
 vi.mock("@supabase/supabase-js", () => ({
-  createClient: () => ({ from: () => ({ select: selectMock }) }),
+  createClient: () => ({ from: () => ({ select: () => ({ limit: limitMock }) }) }),
 }));
 
 const { GET } = await import("../app/api/health/route");
@@ -11,7 +11,7 @@ const { GET } = await import("../app/api/health/route");
 const ORIGINAL_ENV = { ...process.env };
 
 beforeEach(() => {
-  selectMock.mockReset();
+  limitMock.mockReset();
   delete process.env.HEALTH_FORCE_FAIL;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -57,7 +57,7 @@ describe("/api/health", () => {
   it("Supabaseに繋がれば200を返す", async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
-    selectMock.mockResolvedValue({ error: null });
+    limitMock.mockResolvedValue({ error: null, status: 200, data: [] });
 
     const response = await GET();
 
@@ -68,7 +68,10 @@ describe("/api/health", () => {
   it("クエリが失敗したら500を返す（UptimeRobotが検知する経路）", async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
-    selectMock.mockResolvedValue({ error: { message: "relation does not exist" } });
+    limitMock.mockResolvedValue({
+      error: { message: "Could not find the table" },
+      status: 404,
+    });
 
     const response = await GET();
 
@@ -82,11 +85,29 @@ describe("/api/health", () => {
   it("Supabaseが応答しない（例外）場合も500を返す", async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
-    selectMock.mockRejectedValue(new Error("network down"));
+    limitMock.mockRejectedValue(new Error("network down"));
 
     const response = await GET();
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toMatchObject({ database: "unreachable" });
+  });
+
+  // supabase-js は head: true のとき、Supabase が 404 を返していても
+  // error: null / status: 204 を返す。error だけを見ていると壊れたDBを
+  // 「正常」と報告してしまうため、ステータスも必ず確認する
+  it("errorがnullでもHTTPステータスが4xxなら500を返す", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+    limitMock.mockResolvedValue({ error: null, status: 404, data: null });
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      status: "error",
+      database: "query_failed",
+      httpStatus: 404,
+    });
   });
 });

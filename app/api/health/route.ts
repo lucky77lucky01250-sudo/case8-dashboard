@@ -30,13 +30,24 @@ export async function GET() {
 
   try {
     const supabase = createClient(url, key);
-    const { error } = await supabase
-      .from("uploads")
-      .select("id", { count: "exact", head: true });
 
-    if (error) {
+    // head: true を使ってはいけない。
+    // HEADリクエストは本文を返さないため supabase-js がエラー本文を読めず、
+    // テーブルが存在せず Supabase が 404(PGRST205) を返しているのに
+    // error: null / status: 204 として「成功」を返してしまう。
+    // 監視の宛先がこの挙動だと、DBが壊れていても200を返し続ける
+    const { error, status } = await supabase.from("uploads").select("id").limit(1);
+
+    // error だけを見るのでは足りない。上記のようにエラーが握り潰される経路があるため、
+    // HTTPステータスも併せて確認する
+    if (error || status >= 400) {
       return NextResponse.json(
-        { status: "error", database: "query_failed", reason: error.message },
+        {
+          status: "error",
+          database: "query_failed",
+          httpStatus: status,
+          reason: error?.message ?? "unexpected status",
+        },
         { status: 500 },
       );
     }

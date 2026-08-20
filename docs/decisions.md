@@ -123,3 +123,28 @@ TTLが5分なので月1回運用では命中せず、逆にキャッシュ書き
 **注意: これは同一データでの予行演習。** 提案書 第9項の(2)(3)は
 「納品時に実際のデータでコメントを5本生成し、担当者様と一緒に1本ずつ確認」する人手判定であり、
 この結果がそれを代替するものではない。
+
+## D-8. ヘルスチェックで `head: true` を使ってはいけない（2026-08-21）
+
+Supabase 接続直後、テーブル未作成の状態で `/api/health` を叩いたところ
+**HTTP 200「正常」が返った**。実際には Supabase 側が 404 を返している。
+
+### 再現
+
+| 実装 | Supabase の応答 | supabase-js が返す値 |
+|---|---|---|
+| `select("id", { count: "exact", head: true })` | HTTP 404 `PGRST205` | `error: null` / `status: 204` |
+| `select("id").limit(1)` | HTTP 404 `PGRST205` | `error: PGRST205` / `status: 404` |
+
+`head: true` は本文を返さない HEAD リクエストを発行するため、supabase-js が
+エラー本文を読めず「成功」として返す。`{ count: "exact", head: true }` は
+行数だけ知りたいときの定番の書き方だが、**死活監視の宛先に使うと監視が嘘をつく**。
+
+### 対処
+
+1. `head: true` をやめ、`select("id").limit(1)` にする
+2. `error` だけでなく **HTTPステータスも確認する**（`error || status >= 400`）
+3. `error: null` かつ `status: 404` のケースを回帰テストに追加（tests/health.test.ts）
+
+これを見逃していた場合、UptimeRobot は Supabase が落ちても「正常」と報告し続け、
+提案書 第9項(4)「失敗に気づけること」を満たさない状態のまま納品していた。
