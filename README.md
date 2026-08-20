@@ -35,11 +35,16 @@ APIキーやSupabaseが未設定でも起動します。AI分析は集計値か�
 ## コマンド
 
 ```bash
-pnpm test         # テスト（CSVパース・集計・AI入力・ヘルスチェック）
-pnpm type-check   # 型チェック
-pnpm lint         # Lint
-pnpm build        # 本番ビルド
+pnpm test             # テスト（CSVパース・集計・AI入力・ヘルスチェック）
+pnpm type-check       # 型チェック
+pnpm lint             # Lint
+pnpm build            # 本番ビルド
+pnpm verify:supabase  # Supabase の設定検証（RLS・サインアップ拒否・テーブル）
 ```
+
+`verify:supabase` は「第三者が読めない・書けない・アカウントを作れない」ことを
+実際に試行して確認します。検収の場で実行して見せられます。
+Supabase の設定を変えたあとは必ず実行してください。
 
 CIは push と PR で `type-check` → `lint` → `test` を実行し、
 すべて通過したときだけ本番へデプロイします。
