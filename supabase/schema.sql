@@ -69,6 +69,14 @@ create index if not exists reports_upload_id_idx on reports (upload_id);
 -- ============================================================
 -- Row Level Security
 -- 読み手は認証済みの7名のみ。anon キーでの読み書きは許可しない
+--
+-- ★重要: Supabase の「公開サインアップ」を必ず無効にすること。
+--   下のポリシーは「認証済みなら全データを読める」という設計。
+--   サインアップが有効なままだと、第三者が自分でアカウントを作って
+--   ログインし、クライアントの売上データを全て閲覧できてしまう。
+--   Authentication → Sign In / Providers → Email →
+--   「Allow new users to sign up」を OFF にする。
+--   アカウントは管理者が Authentication → Users から作成する。
 -- ============================================================
 alter table uploads enable row level security;
 alter table sales_data enable row level security;
