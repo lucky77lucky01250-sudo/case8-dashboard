@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { DashboardView, type DashboardData } from "@/components/dashboard/dashboard-view";
 import { aggregateSales } from "@/lib/aggregate";
 import { createClient } from "@/lib/supabase/server";
-import { loadLatestUpload } from "@/lib/supabase/sales";
+import { loadLatestReport, loadLatestUpload } from "@/lib/supabase/sales";
 
 // 保存済みデータを毎回読みに行く。ビルド時のキャッシュを返すと古い数字が出る
 export const dynamic = "force-dynamic";
@@ -28,7 +28,12 @@ export default async function DashboardPage() {
     // 空表示にしたうえで失敗を明示する（提案書 第9項(4)）
     loadError = stored.error;
   } else if (!("empty" in stored) && stored.rows.length > 0) {
+    // 保存済みのコメントがあれば表示する。読み手それぞれが「生成」を押すと
+    // API呼び出しが人数分になり、費用の前提が崩れるため
+    const savedReport = await loadLatestReport(stored.upload.id);
     initial = {
+      uploadId: stored.upload.id,
+      savedReport,
       summary: aggregateSales(stored.rows),
       fileName: stored.upload.fileName,
       updatedAt: new Date(stored.upload.uploadedAt).toLocaleString("ja-JP"),

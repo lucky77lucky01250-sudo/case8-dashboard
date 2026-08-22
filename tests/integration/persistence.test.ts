@@ -23,7 +23,9 @@ for (const line of readFileSync(".env.local", "utf8").split("\n")) {
   }
 }
 
-const { saveUpload, loadLatestUpload } = await import("../../lib/supabase/sales");
+const { saveUpload, loadLatestUpload, saveReport, loadLatestReport } = await import(
+  "../../lib/supabase/sales"
+);
 
 const ROW_COUNT = 2500;
 const FILE_NAME = `__integration_test__${Date.now()}.csv`;
@@ -97,5 +99,54 @@ describe(`${ROW_COUNT}行の保存と読み出し`, () => {
 
     expect(actualRevenue).toBe(expectedRevenue);
     expect(aggregateSales(loaded.rows).overall.revenue).toBe(expectedRevenue);
+  });
+});
+
+describe("AI分析コメントの保存と読み出し", () => {
+  it("保存したコメントがそのまま復元される", async () => {
+    if (!uploadId) throw new Error("uploadId がありません");
+
+    const analysis = {
+      summary: "11月の売上は前月比+79.5%でした。",
+      highlights: ["アウターが287,400円で最大", "リピート率は46.7%"],
+      actions: [
+        { title: "アウターの在庫を確保する", rationale: "売上の51.3%を占めるため", metric: "12月のアウター売上" },
+      ],
+    };
+
+    const saved = await saveReport({
+      uploadId,
+      model: "claude-opus-5",
+      summary: analysis.summary,
+      highlights: analysis.highlights,
+      actions: analysis.actions,
+    });
+    expect(saved.error).toBeUndefined();
+
+    const loaded = await loadLatestReport(uploadId);
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.model).toBe("claude-opus-5");
+    expect(loaded!.summary).toBe(analysis.summary);
+    expect(loaded!.highlights).toEqual(analysis.highlights);
+    // jsonb を往復してもアクション提案の構造が崩れないこと
+    expect(loaded!.actions).toEqual(analysis.actions);
+  });
+
+  it("コメントが無いアップロードでは null が返る", async () => {
+    const result = await saveUpload({
+      fileName: `__integration_no_report__${Date.now()}.csv`,
+      rows: rows.slice(0, 5),
+      invalid: [],
+    });
+    if ("error" in result) throw new Error(result.error);
+
+    await expect(loadLatestReport(result.uploadId)).resolves.toBeNull();
+
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    await admin.from("uploads").delete().eq("id", result.uploadId);
   });
 });

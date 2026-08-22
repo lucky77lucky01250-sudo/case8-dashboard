@@ -213,3 +213,40 @@ export async function saveReport(params: {
 
   return error ? { error: error.message } : {};
 }
+
+export type StoredReport = {
+  model: string;
+  createdAt: string;
+  summary: string;
+  highlights: string[];
+  actions: { title: string; rationale: string; metric: string }[];
+};
+
+/**
+ * 保存済みのAI分析コメントを取得する。
+ *
+ * 読み手7名がそれぞれ「生成」を押すとAPI呼び出しが7回になる。
+ * 保存したものを表示すれば1回で済み、提案書の月500円の前提も崩れない
+ */
+export async function loadLatestReport(uploadId: string): Promise<StoredReport | null> {
+  const supabase = createAdminClient();
+  if (!supabase) return null;
+
+  const { data, error, status } = await supabase
+    .from("reports")
+    .select("model, created_at, summary, highlights, action_items")
+    .eq("upload_id", uploadId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error || status >= 400 || !data || data.length === 0) return null;
+
+  const row = data[0];
+  return {
+    model: row.model as string,
+    createdAt: row.created_at as string,
+    summary: row.summary as string,
+    highlights: (row.highlights ?? []) as string[],
+    actions: (row.action_items ?? []) as StoredReport["actions"],
+  };
+}

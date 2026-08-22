@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { persistUpload } from "@/app/actions/upload";
-import { AiAnalysis } from "@/components/dashboard/ai-analysis";
+import { AiAnalysis, type SavedReport } from "@/components/dashboard/ai-analysis";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
@@ -20,11 +20,13 @@ import {
 } from "@/lib/format";
 
 export type DashboardData = {
+  uploadId: string | null;
   summary: SalesSummary;
   fileName: string;
   updatedAt: string;
   validRowCount: number;
   invalidRows: InvalidRow[];
+  savedReport: SavedReport | null;
 };
 
 type View = DashboardData & { storage: "saved" | "saving" | "unsaved" };
@@ -90,6 +92,8 @@ export function DashboardView({ initial }: { initial: DashboardData | null }) {
               setIsUploaderOpen(false);
 
               const next: View = {
+                uploadId: null,
+                savedReport: null,
                 summary: aggregateSales(result.valid),
                 fileName,
                 updatedAt: new Date().toLocaleString("ja-JP"),
@@ -106,7 +110,11 @@ export function DashboardView({ initial }: { initial: DashboardData | null }) {
                   invalid: result.invalid,
                 });
                 if (saved.status === "saved") {
-                  setView((current) => (current ? { ...current, storage: "saved" } : current));
+                  setView((current) =>
+                    current
+                      ? { ...current, storage: "saved", uploadId: saved.uploadId }
+                      : current,
+                  );
                 } else {
                   // 保存できていないのに保存済みに見せない。
                   // 画面の数字自体は正しいので、消さずに状態だけ伝える
@@ -210,7 +218,11 @@ export function DashboardView({ initial }: { initial: DashboardData | null }) {
           </section>
 
           <section className="mt-6">
-            <AiAnalysis summary={summary} />
+            <AiAnalysis
+              summary={summary}
+              uploadId={view?.uploadId ?? null}
+              savedReport={view?.savedReport ?? null}
+            />
           </section>
 
           <section className="mt-6 grid gap-6 lg:grid-cols-2">
