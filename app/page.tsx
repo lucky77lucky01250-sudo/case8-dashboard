@@ -1,6 +1,11 @@
 import { redirect } from "next/navigation";
-import { DashboardView } from "@/components/dashboard/dashboard-view";
+import { DashboardView, type DashboardData } from "@/components/dashboard/dashboard-view";
+import { aggregateSales } from "@/lib/aggregate";
 import { createClient } from "@/lib/supabase/server";
+import { loadLatestUpload } from "@/lib/supabase/sales";
+
+// 保存済みデータを毎回読みに行く。ビルド時のキャッシュを返すと古い数字が出る
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -12,6 +17,25 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  const stored = await loadLatestUpload();
+
+  let initial: DashboardData | null = null;
+  let loadError: string | null = null;
+
+  if ("error" in stored) {
+    // 読み込みに失敗したときに古い数字を出し続けないよう、
+    // 空表示にしたうえで失敗を明示する（提案書 第9項(4)）
+    loadError = stored.error;
+  } else if (!("empty" in stored) && stored.rows.length > 0) {
+    initial = {
+      summary: aggregateSales(stored.rows),
+      fileName: stored.upload.fileName,
+      updatedAt: new Date(stored.upload.uploadedAt).toLocaleString("ja-JP"),
+      validRowCount: stored.rows.length,
+      invalidRows: stored.invalid,
+    };
+  }
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10">
@@ -35,7 +59,14 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <DashboardView />
+      {loadError && (
+        <p className="mt-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-800">
+          保存済みデータの読み込みに失敗しました。表示されている内容は最新ではない可能性があります。
+          （{loadError}）
+        </p>
+      )}
+
+      <DashboardView initial={initial} />
     </main>
   );
 }

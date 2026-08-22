@@ -2,24 +2,34 @@
 
 import { useState } from "react";
 import { invalidRowsToCsv } from "@/lib/csv/parser";
-import type { ParseResult } from "@/lib/csv/types";
+import type { InvalidRow } from "@/lib/csv/types";
 
 type Props = {
-  result: ParseResult;
+  /** 取り込めた行数。DBから復元したときも表示できるよう件数だけ受け取る */
+  validRowCount: number;
+  invalidRows: InvalidRow[];
   fileName: string;
   updatedAt: string;
+  /** 保存の状態。保存できていないのに保存済みに見えるのを防ぐ */
+  storage?: "saved" | "unsaved" | "saving";
 };
 
 /**
  * 講義の「無効行を捨てない」要件。
  * 何行取り込めて何行スキップしたかを必ず出し、スキップ行はCSVで持ち帰れるようにする
  */
-export function ImportSummary({ result, fileName, updatedAt }: Props) {
+export function ImportSummary({
+  validRowCount,
+  invalidRows,
+  fileName,
+  updatedAt,
+  storage,
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const skipped = result.invalid.length;
+  const skipped = invalidRows.length;
 
   function downloadSkippedRows() {
-    const csv = invalidRowsToCsv(result.invalid);
+    const csv = invalidRowsToCsv(invalidRows);
     const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -35,14 +45,21 @@ export function ImportSummary({ result, fileName, updatedAt }: Props) {
         <div>
           <p className="text-sm text-zinc-600">{fileName}</p>
           <p className="mt-1 text-base">
-            <span className="font-semibold text-brand-navy">{result.valid.length} 行成功</span>
+            <span className="font-semibold text-brand-navy">{validRowCount} 行成功</span>
             <span className="mx-2 text-zinc-300">/</span>
             <span className={skipped > 0 ? "font-semibold text-amber-700" : "text-zinc-500"}>
               {skipped} 行スキップ
             </span>
           </p>
           {/* 検収基準(4): 古い数字を出し続けないよう最終更新日時を必ず表示する */}
-          <p className="mt-1 text-xs text-zinc-500">最終更新 {updatedAt}</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            最終更新 {updatedAt}
+            {storage === "saving" && <span className="ml-2 text-zinc-400">保存中…</span>}
+            {storage === "saved" && <span className="ml-2 text-zinc-400">保存済み</span>}
+            {storage === "unsaved" && (
+              <span className="ml-2 text-amber-700">未保存（この画面を閉じると失われます）</span>
+            )}
+          </p>
         </div>
 
         {skipped > 0 && (
@@ -81,7 +98,7 @@ export function ImportSummary({ result, fileName, updatedAt }: Props) {
               </tr>
             </thead>
             <tbody>
-              {result.invalid.map((row) => (
+              {invalidRows.map((row) => (
                 <tr key={row.line} className="border-t border-zinc-100">
                   <td className="px-3 py-2 tabular-nums text-zinc-500">{row.line}</td>
                   <td className="px-3 py-2 text-zinc-800">{row.reason}</td>

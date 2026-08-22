@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { persistUpload } from "@/app/actions/upload";
 import { AiAnalysis } from "@/components/dashboard/ai-analysis";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -8,8 +9,8 @@ import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
 import { SkuTable } from "@/components/dashboard/sku-table";
 import { CsvUploader } from "@/components/upload/csv-uploader";
 import { ImportSummary } from "@/components/upload/import-summary";
-import { aggregateSales } from "@/lib/aggregate";
-import type { ParseResult } from "@/lib/csv/types";
+import { aggregateSales, type SalesSummary } from "@/lib/aggregate";
+import type { InvalidRow } from "@/lib/csv/types";
 import {
   formatChangePercent,
   formatChangePoint,
@@ -18,7 +19,15 @@ import {
   formatYen,
 } from "@/lib/format";
 
-type Upload = { result: ParseResult; fileName: string; updatedAt: string };
+export type DashboardData = {
+  summary: SalesSummary;
+  fileName: string;
+  updatedAt: string;
+  validRowCount: number;
+  invalidRows: InvalidRow[];
+};
+
+type View = DashboardData & { storage: "saved" | "saving" | "unsaved" };
 
 function directionOf(value: number | null): "up" | "down" | "flat" | null {
   if (value === null) return null;
@@ -27,15 +36,16 @@ function directionOf(value: number | null): "up" | "down" | "flat" | null {
   return "flat";
 }
 
-export function DashboardView() {
-  const [upload, setUpload] = useState<Upload | null>(null);
+export function DashboardView({ initial }: { initial: DashboardData | null }) {
+  const [view, setView] = useState<View | null>(
+    initial ? { ...initial, storage: "saved" } : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [isUploaderOpen, setIsUploaderOpen] = useState(false);
+  const [, startTransition] = useTransition();
 
-  const summary = useMemo(
-    () => (upload ? aggregateSales(upload.result.valid) : null),
-    [upload],
-  );
+  const summary = view?.summary ?? null;
 
   const currentMonth = useMemo(() => {
     if (!summary || summary.months.length === 0) return null;
@@ -47,43 +57,70 @@ export function DashboardView() {
 
   return (
     <>
-
       {error && (
         <p className="mt-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       )}
 
-      <section className="mt-6">
-        {upload === null ? (
+      <section className="mt-6 space-y-3">
+        {view && (
+          <ImportSummary
+            validRowCount={view.validRowCount}
+            invalidRows={view.invalidRows}
+            fileName={view.fileName}
+            updatedAt={view.updatedAt}
+            storage={view.storage}
+          />
+        )}
+
+        {view && !isUploaderOpen && (
+          <button
+            type="button"
+            onClick={() => setIsUploaderOpen(true)}
+            className="text-sm text-brand-navy underline underline-offset-4 hover:opacity-80"
+          >
+            別のCSVをアップロードする
+          </button>
+        )}
+
+        {(view === null || isUploaderOpen) && (
           <CsvUploader
             onParsed={(result, fileName) => {
               setError(null);
               setSelectedMonth(null);
-              setUpload({
-                result,
+              setIsUploaderOpen(false);
+
+              const next: View = {
+                summary: aggregateSales(result.valid),
                 fileName,
                 updatedAt: new Date().toLocaleString("ja-JP"),
+                validRowCount: result.valid.length,
+                invalidRows: result.invalid,
+                storage: "saving",
+              };
+              setView(next);
+
+              startTransition(async () => {
+                const saved = await persistUpload({
+                  fileName,
+                  rows: result.valid,
+                  invalid: result.invalid,
+                });
+                if (saved.status === "saved") {
+                  setView((current) => (current ? { ...current, storage: "saved" } : current));
+                } else {
+                  // 保存できていないのに保存済みに見せない。
+                  // 画面の数字自体は正しいので、消さずに状態だけ伝える
+                  setView((current) => (current ? { ...current, storage: "unsaved" } : current));
+                  setError(
+                    saved.status === "error"
+                      ? `画面には表示していますが、保存に失敗しました: ${saved.message}`
+                      : saved.reason,
+                  );
+                }
               });
             }}
             onError={(message) => setError(message)}
           />
-        ) : (
-          <div className="space-y-3">
-            <ImportSummary
-              result={upload.result}
-              fileName={upload.fileName}
-              updatedAt={upload.updatedAt}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setUpload(null);
-                setError(null);
-              }}
-              className="text-sm text-brand-navy underline underline-offset-4 hover:opacity-80"
-            >
-              別のCSVをアップロードする
-            </button>
-          </div>
         )}
       </section>
 
