@@ -367,3 +367,72 @@ docs/deploy-checklist.md の Phase 2-3 に手順として記載した。
 
 `vercel link` は `.env.local` の末尾に `VERCEL_OIDC_TOKEN` を追記する。
 既存の4つのキーは保持されていたが、上書きの可能性があるため実行後の確認が必要。
+
+---
+
+## D-16. `NEXT_PUBLIC_*` を Vercel の Sensitive 環境変数にしてはいけない（2026-08-22）
+
+### 起きたこと
+
+初回デプロイは GitHub Actions 上で**成功**した。ビルドエラーもテスト失敗もない。
+にもかかわらず、本番のすべてのページが 500 を返した。
+
+```
+/api/health → {"status":"error","database":"unreachable"} (HTTP 500)
+/           → HTTP 500
+/login      → HTTP 500
+```
+
+`/api/cron` だけは秘密なしで 401 を返しており、正しく動いていた。
+
+### 原因
+
+Vercel に登録した5つの環境変数を、すべて **Sensitive** 属性で作っていた。
+
+Sensitive な変数は**書き込み専用**で、あとから値を読み出せない。
+`vercel env ls` では `Hidden` と表示され、`vercel pull` では**11文字のプレースホルダ**が
+返る（実際の値は 108 / 40 / 46 / 41 文字）。
+
+CI のデプロイ手順は `vercel pull` → `vercel build` → `vercel deploy --prebuilt` である。
+`NEXT_PUBLIC_*` は**ビルド時にソースコードへ文字列として埋め込まれる**ため、
+`vercel pull` が返したプレースホルダがそのままバンドルに焼き込まれた。
+
+結果、実行時に Supabase クライアントが不正なURLで生成され、全リクエストが例外になった。
+
+### なぜ気づきにくいか
+
+**ビルドは成功する。** プレースホルダも文字列としては正当なので、型チェックも
+Lint もテストも通る。壊れていることが分かるのは本番にアクセスした瞬間だけで、
+しかもエラーは「Supabaseに繋がらない」としか見えない。
+Supabase 側を疑って時間を溶かす典型的な形になっていた。
+
+### 決めたこと
+
+**`NEXT_PUBLIC_` で始まる変数は Sensitive にしない。**
+
+そもそも `NEXT_PUBLIC_*` は**ブラウザに配信される前提の値**である。
+Supabase の URL と anon キーは、RLS で守ることを前提に公開してよい設計になっている。
+隠す意味がないうえに、隠すとビルドが壊れる。
+
+```bash
+vercel env add NEXT_PUBLIC_SUPABASE_URL production --no-sensitive
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production --no-sensitive
+```
+
+一方、次の3つは**実行時にサーバ側でしか読まれず、ビルドに埋め込まれない**ため、
+Sensitive のままでよい。むしろそうするべきである。
+
+- `ANTHROPIC_API_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CRON_SECRET`
+
+### 判断の基準
+
+| | ビルド時に埋め込まれるか | Sensitive にしてよいか |
+|---|---|---|
+| `NEXT_PUBLIC_*` | される | **してはいけない** |
+| それ以外 | されない | してよい（推奨） |
+
+`SUPABASE_SERVICE_ROLE_KEY` に `NEXT_PUBLIC_` を付けてはいけない理由と
+表裏の関係にある。**公開してよい値だけが `NEXT_PUBLIC_` を名乗れて、
+`NEXT_PUBLIC_` を名乗る値は隠せない。**

@@ -111,15 +111,33 @@ pnpm dlx vercel git disconnect --yes
 Vercel ダッシュボード → プロジェクト → Settings → Environment Variables に
 以下を **Production** 環境で登録する。値は `.env.local` と同じもの。
 
-| 変数 | 備考 |
-|---|---|
-| `ANTHROPIC_API_KEY` | |
-| `NEXT_PUBLIC_SUPABASE_URL` | |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | |
-| `SUPABASE_SERVICE_ROLE_KEY` | **絶対に `NEXT_PUBLIC_` を付けない** |
-| `CRON_SECRET` | 任意の長い文字列。Vercel Cron の認証に使う |
+| 変数 | Sensitive | 備考 |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | する | |
+| `NEXT_PUBLIC_SUPABASE_URL` | **しない** | |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **しない** | |
+| `SUPABASE_SERVICE_ROLE_KEY` | する | **絶対に `NEXT_PUBLIC_` を付けない** |
+| `CRON_SECRET` | する | 任意の長い文字列。Vercel Cron の認証に使う |
 
 `HEALTH_FORCE_FAIL` は**登録しない**。検収で障害を実演するときだけ一時的に追加する。
+
+### `NEXT_PUBLIC_*` を Sensitive にしてはいけない（重要）
+
+Sensitive な変数は**あとから値を読み出せない。** `vercel pull` は実際の値ではなく
+プレースホルダを返す。CI は `vercel pull` → `vercel build` の順でビルドするため、
+**ビルド時にコードへ埋め込まれる `NEXT_PUBLIC_*` はプレースホルダのまま焼き込まれる。**
+
+このとき**ビルドは成功し、テストも通り、本番だけが全ページ500を返す。**
+実際に発生した（D-16）。原因が Supabase 側に見えるため、切り分けに時間がかかる。
+
+`NEXT_PUBLIC_*` はそもそもブラウザに配信される前提の値なので、隠す意味がない。
+CLI で登録する場合は明示する。
+
+```bash
+pnpm dlx vercel env add NEXT_PUBLIC_SUPABASE_URL production --no-sensitive
+```
+
+登録後、必ず `vercel env ls production` で `Non-sensitive` になっているか確認する。
 
 ---
 
