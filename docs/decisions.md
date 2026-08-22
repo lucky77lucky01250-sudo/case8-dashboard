@@ -270,3 +270,35 @@ Supabase の **Authentication → URL Configuration → Redirect URLs** に
 Site URL を `http://localhost:3100`、Redirect URLs に `http://localhost:3100/**` を設定した。
 **本番デプロイ時は同じ設定を本番ドメインで行う必要がある**（docs/deploy-checklist.md 5-1）。
 忘れると本番のリンクが localhost に飛ぶ。エラーは出ないので気づきにくい。
+
+## D-13. 模擬案件の実行環境は Vercel Hobby（2026-08-22）
+
+**提案書の「Vercel Pro $20/月」は変更しない。実行環境だけ Hobby にする。**
+
+CLAUDE.md に「Hobbyは非商用限定。受託では規約違反」と記載しているとおり、
+実在のクライアントから報酬を得る案件で Hobby を使うのは規約違反である。
+講義版が無料Hobbyで受託する前提になっていたのを意図的に変えた点でもある。
+
+一方、本件は AIエンジニア講座の課題であり、LUMINA は架空企業。
+報酬も発生しないため、Hobby の「個人・非商用利用」の範囲に収まる。
+
+| | 記載・設定 | 理由 |
+|---|---|---|
+| 提案書 | Vercel Pro $20/月 | 実案件を想定した設計文書として正しい |
+| 実行環境 | Vercel Hobby（無料） | 学習用途のため規約上問題ない |
+
+後から見て「提案書はProなのにHobbyで動いている」という矛盾に見えないよう、
+ここに理由を残す。実案件として稼働させる段階で Pro へ移行する。
+
+### 制約
+
+Hobby は Vercel Cron の実行頻度に上限がある（1日1回）。
+本案件の Supabase 停止対策は日次なので収まる見込みだが、
+デプロイ後に Cron Jobs へ登録されているかを必ず確認する。
+登録されない場合は代替手段（外部のcronサービス等）を検討し、その旨を記録する。
+
+### 費用
+
+模擬案件として完了するまでに追加の出費は発生しない。
+GitHub Private・Vercel Hobby・Supabase Free・UptimeRobot Free はいずれも無料。
+Anthropic API のみ従量課金だが、実測 約7円/月（D-7）で既存残高で足りる。
