@@ -76,6 +76,34 @@ pnpm dlx vercel link
 完了すると `.vercel/project.json` が作られる。**このファイルは git に入れない**
 （`.gitignore` 済み）。中の `orgId` と `projectId` を Phase 4 で使う。
 
+### 2-3. Git連携を必ず切る（重要）
+
+**`vercel link` は git remote を検出すると、GitHubリポジトリを自動的に連携する。**
+実行ログに次の行が出る。
+
+```
+> Connecting GitHub repository: https://github.com/.../case8-dashboard
+> Connected
+```
+
+ダッシュボードの Import を避けても、CLI 経由で連携されてしまう。
+このままだと push のたびに Vercel が独自にビルドし、
+**GitHub Actions のテストを待たずに本番へ反映される。**
+
+必ず切断する。
+
+```bash
+pnpm dlx vercel git disconnect --yes
+```
+
+`Your Vercel project will no longer create deployments when you push to this repository.`
+と出れば成功。
+
+### 2-4. `.env.local` への追記について
+
+`vercel link` は `.env.local` の末尾に `VERCEL_OIDC_TOKEN` を追記する。
+既存の値は保持されるが、実行後に4つのキーが残っているか確認すること。
+
 ---
 
 ## Phase 3: Vercel の環境変数（ryuさん）

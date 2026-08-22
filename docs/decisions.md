@@ -334,3 +334,36 @@ clone 直後の誰が実行しても通る状態にするため。CI だけ直�
 ### 検証
 
 `rm -rf .next` で CI と同じ状態を作ってから `pnpm type-check` が通ることを確認した。
+
+## D-15. `vercel link` は Git連携を自動で有効にする（2026-08-22）
+
+Vercel プロジェクトを作る際、ダッシュボードの「Import Git Repository」を避けて
+CLI の `vercel link` を使ったが、**それでも GitHub リポジトリが自動連携された。**
+
+```
+> Connecting GitHub repository: https://github.com/lucky77lucky01250-sudo/case8-dashboard
+> Connected
+```
+
+`vercel link` はカレントディレクトリの git remote を検出して自動的に接続する。
+「CLIで作れば連携されない」という想定は誤りだった。
+
+放置すると push のたびに Vercel が独自にビルドし、GitHub Actions の
+型チェック・Lint・テストの結果を待たずに本番へ反映される。
+同じコミットが二重にデプロイされ、片方はテスト未通過のまま公開される。
+
+### 対処
+
+```bash
+pnpm dlx vercel git disconnect --yes
+```
+
+実行後、`vercel project inspect` に Git 連携の記載が無いことを確認した。
+
+**プロジェクトを作り直したときは、毎回この切断を行う必要がある。**
+docs/deploy-checklist.md の Phase 2-3 に手順として記載した。
+
+### 付随して起きたこと
+
+`vercel link` は `.env.local` の末尾に `VERCEL_OIDC_TOKEN` を追記する。
+既存の4つのキーは保持されていたが、上書きの可能性があるため実行後の確認が必要。
