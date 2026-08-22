@@ -260,3 +260,13 @@ Supabase の **Authentication → URL Configuration → Redirect URLs** に
 
 無料プランの組み込みメール送信は**回数制限が厳しい**（1時間に数通）。
 7名の実運用に耐えないため、本番では独自SMTPの設定が必要。デプロイ時に対応する。
+
+### 動作確認（2026-08-22）
+
+再設定メールの送信 → リンクからの再設定 → ログアウト → 新しいパスワードでログイン、
+までを実際に通して確認済み。Supabase 側の `last_sign_in_at` と `updated_at` でも裏を取った。
+
+確認にあたり Supabase の Authentication → URL Configuration で
+Site URL を `http://localhost:3100`、Redirect URLs に `http://localhost:3100/**` を設定した。
+**本番デプロイ時は同じ設定を本番ドメインで行う必要がある**（docs/deploy-checklist.md 5-1）。
+忘れると本番のリンクが localhost に飛ぶ。エラーは出ないので気づきにくい。
