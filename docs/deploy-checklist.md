@@ -157,12 +157,24 @@ GitHub リポジトリ → Settings → Secrets and variables → Actions → Ne
 
 ## Phase 5: デプロイ後の設定
 
+### 5-0. 本番URL（2026-08-22 確定）
+
+| 用途 | URL |
+|---|---|
+| **固定URL（これを使う）** | `https://case8-lumina-dashboard-chi.vercel.app` |
+| デプロイ個別URL | `https://case8-lumina-dashboard-<ハッシュ>.vercel.app` |
+
+デプロイ個別URLは**デプロイのたびに変わる。** 監視設定やSupabaseのリダイレクト先には
+必ず固定URLのほうを使う。個別URLを登録すると、次のデプロイで静かに壊れる。
+
+`case8-lumina-dashboard.vercel.app`（`-chi` なし）は**存在しない**（404）。
+
 ### 5-1. Supabase の URL を本番向けに変更（ryuさん）
 
 Authentication → URL Configuration
 
-- **Site URL**: `https://<Vercelのドメイン>`
-- **Redirect URLs**: `https://<Vercelのドメイン>/**` を追加
+- **Site URL**: `https://case8-lumina-dashboard-chi.vercel.app`
+- **Redirect URLs**: `https://case8-lumina-dashboard-chi.vercel.app/**` を追加
 
 開発用の `http://localhost:3100` は残しておいてよい（開発を続けるため）。
 
