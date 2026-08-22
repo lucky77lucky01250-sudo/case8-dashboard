@@ -302,3 +302,35 @@ Hobby は Vercel Cron の実行頻度に上限がある（1日1回）。
 模擬案件として完了するまでに追加の出費は発生しない。
 GitHub Private・Vercel Hobby・Supabase Free・UptimeRobot Free はいずれも無料。
 Anthropic API のみ従量課金だが、実測 約7円/月（D-7）で既存残高で足りる。
+
+## D-14. `type-check` に `next typegen` を含める（2026-08-22）
+
+初回の push で GitHub Actions が失敗した。
+
+```
+app/layout.tsx(20,50): error TS2304: Cannot find name 'LayoutProps'.
+```
+
+**手元では通るのに CI だけ落ちる**典型例。`LayoutProps` は create-next-app が生成した
+`app/layout.tsx` が使っている型で、実体は Next.js が `.next/types/routes.d.ts` に
+**自動生成する**。tsconfig は `.next/types/**/*.ts` を include しているため、
+手元では `next dev` が生成済みの型を拾って成功していた。
+
+CI は clone 直後で `.next` が存在しないため、型が見つからず失敗する。
+
+### 対処
+
+Next.js 16 の `next typegen`（フルビルドせずに型定義だけ生成するコマンド）を
+`type-check` スクリプトに含めた。
+
+```json
+"type-check": "next typegen && tsc --noEmit"
+```
+
+**CI のワークフロー側ではなくスクリプト側に入れた理由**は、
+clone 直後の誰が実行しても通る状態にするため。CI だけ直すと、
+新しく参加した人が手元で `pnpm type-check` を実行したときに同じ失敗を踏む。
+
+### 検証
+
+`rm -rf .next` で CI と同じ状態を作ってから `pnpm type-check` が通ることを確認した。
