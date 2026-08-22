@@ -40,7 +40,11 @@ pnpm type-check       # 型チェック
 pnpm lint             # Lint
 pnpm build            # 本番ビルド
 pnpm verify:supabase  # Supabase の設定検証（RLS・サインアップ拒否・テーブル）
+pnpm test:integration # 実Supabaseに2,500行を往復させる結合テスト
 ```
+
+`test:integration` は実際のDBに接続するため、CI（`pnpm test`）からは除外しています。
+提案書 第9項(1)の「本番と同じ件数のデータでも数字が一致すること」を確認するものです。
 
 `verify:supabase` は「第三者が読めない・書けない・アカウントを作れない」ことを
 実際に試行して確認します。検収の場で実行して見せられます。
@@ -84,6 +88,8 @@ docs/
   スキップ行はCSVで持ち帰れるようにしています
 - **リピート率は月次と期間累計の2種類がある。** 定義が異なるため、画面上でも区別しています
 - **AIへ送るのは集計後の数値のみ。** 顧客IDや注文明細は送信しません（テストで固定）
+- **DBからの読み出しは必ずページングする。** PostgREST は1回のクエリで最大1,000行しか
+  返さず、超えた分は警告なく切り捨てられます（`lib/supabase/paginate.ts`）
 
 ## Supabase の設定で必ず守ること
 
