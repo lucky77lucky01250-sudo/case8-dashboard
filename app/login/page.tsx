@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata = { title: "ログイン | LUMINA 売上分析ダッシュボード" };
@@ -20,9 +21,15 @@ export default async function LoginPage({
         <LoginForm nextPath={next} />
       </div>
 
+      <Link
+        href="/auth/forgot-password"
+        className="mt-4 text-sm text-brand-navy underline underline-offset-4 hover:opacity-80"
+      >
+        パスワードをお忘れの方
+      </Link>
+
       <p className="mt-4 text-xs leading-relaxed text-zinc-500">
-        アカウントは管理者が登録します。ログインできない場合や、パスワードを忘れた場合は
-        担当者までご連絡ください。
+        アカウントは管理者が登録します。ログインできない場合は担当者までご連絡ください。
       </p>
     </main>
   );
