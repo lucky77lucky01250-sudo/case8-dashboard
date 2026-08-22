@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { DashboardView, type DashboardData } from "@/components/dashboard/dashboard-view";
 import { aggregateSales } from "@/lib/aggregate";
+import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { loadLatestReport, loadLatestUpload } from "@/lib/supabase/sales";
 
@@ -36,7 +37,7 @@ export default async function DashboardPage() {
       savedReport,
       summary: aggregateSales(stored.rows),
       fileName: stored.upload.fileName,
-      updatedAt: new Date(stored.upload.uploadedAt).toLocaleString("ja-JP"),
+      updatedAt: formatDateTime(stored.upload.uploadedAt),
       validRowCount: stored.rows.length,
       invalidRows: stored.invalid,
     };

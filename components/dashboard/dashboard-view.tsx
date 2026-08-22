@@ -14,6 +14,7 @@ import type { InvalidRow } from "@/lib/csv/types";
 import {
   formatChangePercent,
   formatChangePoint,
+  formatDateTime,
   formatMonth,
   formatPercent,
   formatYen,
@@ -96,7 +97,7 @@ export function DashboardView({ initial }: { initial: DashboardData | null }) {
                 savedReport: null,
                 summary: aggregateSales(result.valid),
                 fileName,
-                updatedAt: new Date().toLocaleString("ja-JP"),
+                updatedAt: formatDateTime(new Date()),
                 validRowCount: result.valid.length,
                 invalidRows: result.invalid,
                 storage: "saving",

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { runAnalysis } from "@/app/actions/analyze";
 import type { SalesSummary } from "@/lib/aggregate";
 import type { AnalysisResult } from "@/lib/ai/analyze";
+import { formatDateTime } from "@/lib/format";
 
 export type SavedReport = {
   model: string;
@@ -116,7 +117,7 @@ export function AiAnalysis({ summary, uploadId, savedReport }: Props) {
 
           <p className="border-t border-zinc-100 pt-3 text-xs text-zinc-500">
             {result.status === "ok"
-              ? `${result.model} が生成しました${savedAt ? `（${new Date(savedAt).toLocaleString("ja-JP")}）` : ""}。AIの出力は100%正確にはなりません。内容をご確認のうえ、必要に応じて加筆してください。`
+              ? `${result.model} が生成しました${savedAt ? `（${formatDateTime(savedAt)}）` : ""}。AIの出力は100%正確にはなりません。内容をご確認のうえ、必要に応じて加筆してください。`
               : "APIキー設定後は、実際のAIコメントに置き換わります。"}
           </p>
         </div>

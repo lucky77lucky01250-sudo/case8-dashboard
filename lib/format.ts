@@ -29,3 +29,18 @@ export function formatMonth(month: string): string {
 export function formatMonthShort(month: string): string {
   return `${Number(month.split("-")[1])}月`;
 }
+
+/**
+ * 日時表示。タイムゾーンを Asia/Tokyo に固定する。
+ *
+ * `"ja-JP"` はロケール（書式）の指定であってタイムゾーンの指定ではない。
+ * 省略すると実行環境のタイムゾーンが使われるため、サーバ（Vercel は UTC）で
+ * 描画した場合とブラウザ（日本なら JST）で描画した場合で9時間ずれる。
+ * 実際に本番で、アップロード直後は 22:59、再読み込み後は 13:59 と表示された。
+ *
+ * ローカルの `next dev` はサーバもブラウザも JST のため再現しない。
+ * 読み手は全員日本にいるので Asia/Tokyo に固定する。
+ */
+export function formatDateTime(value: Date | string | number): string {
+  return new Date(value).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+}
