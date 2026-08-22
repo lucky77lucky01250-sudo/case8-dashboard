@@ -180,11 +180,72 @@ Authentication → URL Configuration
 
 **これを忘れると、本番でパスワード再設定のリンクが localhost に飛ぶ。**
 
-### 5-2. 独自SMTP の設定（ryuさん）
+### 5-2. 独自SMTP の設定（作業中）
 
 Supabase の組み込みメール送信は**1時間に数通**の制限があり、実運用に耐えない。
-読み手7名がパスワード再設定を使うため、Authentication → Emails → SMTP Settings で
-独自のSMTP（Resend、SendGrid、Amazon SES など）を設定する。
+読み手7名がパスワード再設定を使うため、独自SMTPを設定する。
+
+#### 使うもの: Resend（`ryuoshida.com` で設定済み）
+
+ryuさんが保有する `ryuoshida.com` に **Resend が2ヶ月前から設定済み・Verified** だった。
+DNSレコードの追加は不要。
+
+```
+resend._domainkey.ryuoshida.com  TXT   DKIM署名鍵
+send.ryuoshida.com               TXT   v=spf1 include:amazonses.com ~all
+send.ryuoshida.com               MX    feedback-smtp.ap-northeast-1.amazonses.com
+_dmarc.ryuoshida.com             TXT   v=DMARC1; p=none;
+```
+
+`dig` で有効を確認済み。Resend は内部で Amazon SES を使うため `amazonses.com` が出る。
+
+#### Brevo を検討して取りやめた理由
+
+当初 Brevo（ドメイン不要・1日300通）で進めかけたが、次の理由で Resend に切り替えた。
+
+| | Brevo | Resend（採用） |
+|---|---|---|
+| DNSレコード追加 | 2〜3件必要 | **不要** |
+| メール本文への住所記載 | **必須**（スパム対策の要件） | なし |
+| SPF/DKIM | 要設定 | **設定済み** |
+| 無料枠 | 300通/日 | 3,000通/月・100通/日 |
+
+Brevo は登録時の住所が**送信するすべてのメールのフッターに載る。**
+実案件ならクライアントの事業所住所を入れる場面だが、
+今回は個人の住所が載ることになるため、この点でも Resend が適切だった。
+
+**教訓: `dig` で既存レコードを調べるときは、apex だけでなくサブドメインも見る。**
+最初に `ryuoshida.com` だけを引いて「未使用」と判断したが、
+実際の設定は `send.ryuoshida.com` と `resend._domainkey.ryuoshida.com` にあった。
+
+#### 残っている手順
+
+1. Resend → API keys → Create API key
+   - Name: `supabase-case8`
+   - Permission: **Sending access**（`Full access` にしない）
+   - キーは発行直後の1回しか表示されない
+2. Supabase → Project Settings → Authentication → SMTP Settings
+
+   | 項目 | 値 |
+   |---|---|
+   | Sender email | `noreply@ryuoshida.com` |
+   | Sender name | `LUMINA 売上分析ダッシュボード` |
+   | Host | `smtp.resend.com` |
+   | Port | `587` |
+   | Username | `resend`（固定文字列。メールアドレスではない） |
+   | Password | 発行したAPIキー |
+
+3. Authentication → Rate Limits でメール送信上限を確認する
+   （独自SMTPにしても自動で無制限にはならない）
+4. 本番でパスワード再設定を実行し、次を確認する
+   - `noreply@ryuoshida.com` から届くか
+   - **迷惑メールに入らないか**
+   - リンクが本番URLに飛ぶか（localhost になっていないか）
+
+#### 実案件との違い（記録）
+
+`ryuoshida.com` は ryuさん個人のドメイン。
+実案件ではクライアント自身のドメインを使うのが正しい形になる。
 
 ### 5-3. 動作確認（こちらで実施）
 
