@@ -1,7 +1,7 @@
 # 本番デプロイ手順
 
 ローカルでの動作確認が完了した状態から、Vercel へ公開するまでの手順。
-**ryuさんの作業**と**こちらの作業**を分けて書いている。
+**開発者の作業**と**こちらの作業**を分けて書いている。
 
 ---
 
@@ -23,7 +23,7 @@ Vercel の Git 連携は push を検知して即ビルド・デプロイする�
 
 ---
 
-## Phase 1: GitHub リポジトリ（ryuさん・5分）
+## Phase 1: GitHub リポジトリ（開発者・5分）
 
 1. https://github.com/new
 2. Repository name: `case8-dashboard`
@@ -35,7 +35,7 @@ Vercel の Git 連携は push を検知して即ビルド・デプロイする�
 
 ---
 
-## Phase 2: Vercel プロジェクト（ryuさん）
+## Phase 2: Vercel プロジェクト（開発者）
 
 ### 2-1. プランの選択
 
@@ -106,7 +106,7 @@ pnpm dlx vercel git disconnect --yes
 
 ---
 
-## Phase 3: Vercel の環境変数（ryuさん）
+## Phase 3: Vercel の環境変数（開発者）
 
 Vercel ダッシュボード → プロジェクト → Settings → Environment Variables に
 以下を **Production** 環境で登録する。値は `.env.local` と同じもの。
@@ -141,7 +141,7 @@ pnpm dlx vercel env add NEXT_PUBLIC_SUPABASE_URL production --no-sensitive
 
 ---
 
-## Phase 4: GitHub Secrets（ryuさん）
+## Phase 4: GitHub Secrets（開発者）
 
 GitHub リポジトリ → Settings → Secrets and variables → Actions → New repository secret
 
@@ -169,7 +169,7 @@ GitHub リポジトリ → Settings → Secrets and variables → Actions → Ne
 
 `case8-lumina-dashboard.vercel.app`（`-chi` なし）は**存在しない**（404）。
 
-### 5-1. Supabase の URL を本番向けに変更（ryuさん）
+### 5-1. Supabase の URL を本番向けに変更（開発者）
 
 Authentication → URL Configuration
 
@@ -185,16 +185,16 @@ Authentication → URL Configuration
 Supabase の組み込みメール送信は**1時間に数通**の制限があり、実運用に耐えない。
 読み手7名がパスワード再設定を使うため、独自SMTPを設定する。
 
-#### 使うもの: Resend（`ryuoshida.com` で設定済み）
+#### 使うもの: Resend（`<独自ドメイン>` で設定済み）
 
-ryuさんが保有する `ryuoshida.com` に **Resend が2ヶ月前から設定済み・Verified** だった。
+開発者が保有する `<独自ドメイン>` に **Resend が2ヶ月前から設定済み・Verified** だった。
 DNSレコードの追加は不要。
 
 ```
-resend._domainkey.ryuoshida.com  TXT   DKIM署名鍵
-send.ryuoshida.com               TXT   v=spf1 include:amazonses.com ~all
-send.ryuoshida.com               MX    feedback-smtp.ap-northeast-1.amazonses.com
-_dmarc.ryuoshida.com             TXT   v=DMARC1; p=none;
+resend._domainkey.<独自ドメイン>  TXT   DKIM署名鍵
+send.<独自ドメイン>               TXT   v=spf1 include:amazonses.com ~all
+send.<独自ドメイン>               MX    feedback-smtp.ap-northeast-1.amazonses.com
+_dmarc.<独自ドメイン>             TXT   v=DMARC1; p=none;
 ```
 
 `dig` で有効を確認済み。Resend は内部で Amazon SES を使うため `amazonses.com` が出る。
@@ -215,8 +215,8 @@ Brevo は登録時の住所が**送信するすべてのメールのフッター
 今回は個人の住所が載ることになるため、この点でも Resend が適切だった。
 
 **教訓: `dig` で既存レコードを調べるときは、apex だけでなくサブドメインも見る。**
-最初に `ryuoshida.com` だけを引いて「未使用」と判断したが、
-実際の設定は `send.ryuoshida.com` と `resend._domainkey.ryuoshida.com` にあった。
+最初に `<独自ドメイン>` だけを引いて「未使用」と判断したが、
+実際の設定は `send.<独自ドメイン>` と `resend._domainkey.<独自ドメイン>` にあった。
 
 #### 残っている手順
 
@@ -228,7 +228,7 @@ Brevo は登録時の住所が**送信するすべてのメールのフッター
 
    | 項目 | 値 |
    |---|---|
-   | Sender email | `noreply@ryuoshida.com` |
+   | Sender email | `noreply@<独自ドメイン>` |
    | Sender name | `LUMINA 売上分析ダッシュボード` |
    | Host | `smtp.resend.com` |
    | Port | `587` |
@@ -238,7 +238,7 @@ Brevo は登録時の住所が**送信するすべてのメールのフッター
 3. Authentication → Rate Limits でメール送信上限を確認する
    （独自SMTPにしても自動で無制限にはならない）
 4. 本番でパスワード再設定を実行し、次を確認する
-   - `noreply@ryuoshida.com` から届くか
+   - `noreply@<独自ドメイン>` から届くか
    - **迷惑メールに入らないか**
    - リンクが本番URLに飛ぶか（localhost になっていないか）
 
@@ -246,7 +246,7 @@ Brevo は登録時の住所が**送信するすべてのメールのフッター
 
 | 項目 | 値 |
 |---|---|
-| Sender email | `noreply@ryuoshida.com` |
+| Sender email | `noreply@<独自ドメイン>` |
 | Sender name | `LUMINA 売上分析ダッシュボード` |
 | Host | `smtp.resend.com` |
 | Port | `587` |
@@ -257,7 +257,7 @@ Brevo は登録時の住所が**送信するすべてのメールのフッター
 
 ```
 SPF    PASS （IP: 23.251.234.50）
-DKIM   PASS （ドメイン: ryuoshida.com）
+DKIM   PASS （ドメイン: <独自ドメイン>）
 DMARC  PASS
 ```
 
@@ -299,7 +299,7 @@ Gmail 側の学習も同時に効いている。**日本語化したから受信
 
 #### 実案件との違い（記録）
 
-`ryuoshida.com` は ryuさん個人のドメイン。
+`<独自ドメイン>` は 開発者個人のドメイン。
 実案件ではクライアント自身のドメインを使うのが正しい形になる。
 
 ### 5-3. 動作確認（こちらで実施）
@@ -331,7 +331,7 @@ CLAUDE.md「通知経路の実測」の手順で行う。
 | Monitor Type | HTTP(s) |
 | 監視URL | `https://case8-lumina-dashboard-chi.vercel.app/api/health` |
 | Monitoring Interval | **5 分**（無料プランの最短） |
-| 通知先 | `lucky77lucky01250@gmail.com` |
+| 通知先 | `<管理者のアドレス>` |
 | プラン | Free（50監視まで・カード不要） |
 
 ### 設定時に判断したこと
