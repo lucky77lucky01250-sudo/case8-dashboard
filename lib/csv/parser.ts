@@ -93,9 +93,29 @@ function parseQuantity(input: string): number | null {
   return parsed;
 }
 
+/**
+ * UTF-8 として読めなかったバイトを検出する。
+ * File.text() は UTF-8 でデコードするため、Shift_JIS のCSVを渡すと
+ * 不正なバイトが U+FFFD（置換文字）になる。金額や日付は ASCII なので
+ * そのまま通り、商品名とカテゴリだけが文字化けしたまま有効行として
+ * 集計される。エラーは出ないので画面上は成功に見える。
+ * Excel の「CSV(カンマ区切り)」は既定が Shift_JIS なので普通に起きる。
+ */
+function hasDecodingFailure(raw: Record<string, string>): boolean {
+  return Object.values(raw).some((value) => (value ?? "").toString().includes("\uFFFD"));
+}
+
 function validateRow(raw: Record<string, string>): { row?: SaleRow; reason?: string } {
   const get = (key: string) => (raw[key] ?? "").toString();
   const reasons: string[] = [];
+
+  if (hasDecodingFailure(raw)) {
+    return {
+      reason:
+        "文字コードが UTF-8 ではないため読み取れません" +
+        "（Excel では「CSV UTF-8 (コンマ区切り)」で保存し直してください）",
+    };
+  }
 
   const orderDate = normalizeDate(get("order_date"));
   if (orderDate === null) reasons.push(`order_date が日付として解釈できません（"${get("order_date")}"）`);
