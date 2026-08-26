@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "type-check": "next typegen && tsc --noEmit",
     "verify:supabase": "node scripts/verify-supabase.mjs",
-    "test:integration": "vitest run --config vitest.integration.config.mts"
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "roi": "node scripts/roi-calc.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
