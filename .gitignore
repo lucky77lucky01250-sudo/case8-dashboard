@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 講師への報告下書きなど、公開しない作業メモ
+.notes/
