@@ -16,7 +16,8 @@ const MAINTENANCE = 20_000; // 月額保守（選択制）
 
 // --- 仮定（クライアントの数値に差し替える）---
 const HOURS_SAVED = [2.5, 2.0, 1.5]; // 月次レポート 3時間 からの削減時間
-const HOURLY_RATES = [3_000, 4_000, 5_000]; // 担当者の時間単価
+// 単価が不明なため5段階で振る。低い側で回収不能に近づくことを示すため2,500円まで下げている
+const HOURLY_RATES = [2_500, 3_000, 4_000, 5_000, 8_000]; // 担当者の時間単価
 const GROSS_PROFITS = [1_000_000, 3_000_000, 5_000_000, 10_000_000]; // 月間粗利額
 const PAYBACK_MONTHS = [12, 24, 36];
 
@@ -40,7 +41,24 @@ function formatPayback(months) {
   return `約${months.toFixed(1)}ヶ月（約${years}年${rest}ヶ月）`;
 }
 
-console.log("■ 3. 時間削減の月額換算（削減時間 × 時間単価）");
+console.log("■ 3. 削減できる時間");
+console.log(`  月 ${BASE_HOURS}時間（3時間 → 約30分）/ 年 ${BASE_HOURS * 12}時間`);
+console.log(`  年間費用: ${yen(MONTHLY * 12)}（月額 ${yen(MONTHLY)} × 12）`);
+
+console.log("\n■ 3. 年間の人件費換算と回収期間（時間削減のみ・保守なし）");
+console.log("  想定時給 | 年間効果 | 年間純便益 | 回収期間");
+for (const r of HOURLY_RATES) {
+  const annualBenefit = BASE_HOURS * 12 * r;
+  const annualNet = annualBenefit - MONTHLY * 12;
+  const years = annualNet > 0 ? INITIAL / annualNet : null;
+  console.log(
+    `  ${yen(r).padStart(8)} | ${yen(annualBenefit).padStart(10)}` +
+      ` | ${yen(annualNet).padStart(10)} | ` +
+      (years ? `${Math.round(years * 12)}ヶ月(${years.toFixed(1)}年)` : "回収不能"),
+  );
+}
+
+console.log("\n■ 3. 時間削減の月額換算（削減時間 × 時間単価）");
 for (const hours of HOURS_SAVED) {
   const cells = HOURLY_RATES.map((r) => yen(hours * r).padStart(10));
   console.log(`  ${hours.toFixed(1)}時間 ${cells.join("")}`);
@@ -128,8 +146,11 @@ const recovered = swing * RECOVER_SHARE;
 const annual = recovered * EFFECTIVE_MONTHS;
 const needed = (INITIAL / 24 + MONTHLY - BASE_SAVING) * 12;
 
-console.log(`  月間粗利 ${yen(ASSUMED_GROSS_PROFIT)} × 検出した変化 ${(DETECTED_RATIO * 100).toFixed(1)}% = ${yen(swing)}/月`);
-console.log(`  うち ${RECOVER_SHARE * 100}% を取り戻す → ${yen(recovered)}/月`);
-console.log(`  ${EFFECTIVE_MONTHS}ヶ月続く → 年 ${yen(annual)}`);
-console.log(`  24ヶ月回収に必要な不足分 → 年 ${yen(needed)}`);
+// レポート本文は概算として丸めて記載する。仮定を重ねた数字に1円単位の精度はない
+const round1k = (n) => `約${(Math.round(n / 1000) * 1000).toLocaleString("ja-JP")}円`;
+console.log(`  月間粗利 ${yen(ASSUMED_GROSS_PROFIT)} × 検出した変化 ${(DETECTED_RATIO * 100).toFixed(1)}% = ${round1k(swing)}/月`);
+console.log(`  うち ${RECOVER_SHARE * 100}% を取り戻す → ${round1k(recovered)}/月`);
+const round10k = (n) => `約${Math.round(n / 10000)}万円`;
+console.log(`  ${EFFECTIVE_MONTHS}ヶ月続く → 年 ${round10k(annual)}`);
+console.log(`  24ヶ月回収に必要な不足分 → 年 ${round10k(needed)}`);
 console.log(`  判定: ${annual >= needed ? "成立する" : "成立しない"}`);
