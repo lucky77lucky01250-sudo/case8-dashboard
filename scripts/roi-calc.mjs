@@ -154,3 +154,20 @@ const round10k = (n) => `約${Math.round(n / 10000)}万円`;
 console.log(`  ${EFFECTIVE_MONTHS}ヶ月続く → 年 ${round10k(annual)}`);
 console.log(`  24ヶ月回収に必要な不足分 → 年 ${round10k(needed)}`);
 console.log(`  判定: ${annual >= needed ? "成立する" : "成立しない"}`);
+
+// --- 規模別の回収期間（レポート 第6項）---
+// 「どの規模なら導入メリットが出るのか」に直接答えるための表。
+// 上の想定（年1回・2.1%相当の変化・半分を取り戻す）を固定し、月間粗利だけを振る。
+console.log("\n■ 6. 月間粗利の規模別に見た回収期間（同じ想定を固定して規模だけ振る）");
+console.log("  月間粗利 | 粗利改善の年間効果 | 時間削減と合わせた年間純便益 | 回収期間");
+for (const gp of [0, ...GROSS_PROFITS]) {
+  const fromMargin = gp * DETECTED_RATIO * RECOVER_SHARE * EFFECTIVE_MONTHS;
+  const annualNet = fromMargin + BASE_SAVING * 12 - MONTHLY * 12;
+  const months = annualNet > 0 ? (INITIAL / annualNet) * 12 : null;
+  const label = gp === 0 ? "発見なし" : yen(gp);
+  console.log(
+    `  ${label.padStart(12)} | ${yen(fromMargin).padStart(12)}` +
+      ` | ${yen(annualNet).padStart(12)} | ` +
+      (months ? `${Math.round(months)}ヶ月` : "回収不能"),
+  );
+}
